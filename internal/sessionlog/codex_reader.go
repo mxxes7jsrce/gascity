@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -145,9 +146,13 @@ func ReadCodexFile(path string, _ int) (*Session, error) {
 			case "error", "stream_error", "turn_aborted":
 				entry := &Entry{
 					UUID:      fmt.Sprintf("codex-event-%d", idx),
-					Type:      "error",
+					Type:      "system",
 					Timestamp: ts,
-					Raw:       json.RawMessage(e.line),
+					Message: mustMarshal(MessageContent{
+						Role:    "system",
+						Content: mustMarshal([]ContentBlock{{Type: "text", Text: codexErrorText(em)}}),
+					}),
+					Raw: json.RawMessage(e.line),
 				}
 				entry.ParentUUID = lastUUID
 				lastUUID = entry.UUID
@@ -155,6 +160,9 @@ func ReadCodexFile(path string, _ int) (*Session, error) {
 				idx++
 
 			default:
+				if skipCodexEventMsgType(em.Type) {
+					continue
+				}
 				entry := &Entry{
 					UUID:      fmt.Sprintf("codex-event-%d", idx),
 					Type:      "event_msg",
@@ -234,9 +242,10 @@ func convertResponseItem(payload json.RawMessage, rawLine string, idx int, ts ti
 			Message: mustMarshal(MessageContent{
 				Role: "assistant",
 				Content: mustMarshal([]ContentBlock{{
-					Type: "tool_use",
-					ID:   callID,
-					Name: ri.Name,
+					Type:  "tool_use",
+					ID:    callID,
+					Name:  ri.Name,
+					Input: cloneRawJSON(ri.Input),
 				}}),
 			}),
 			Raw: json.RawMessage(rawLine),
@@ -249,7 +258,15 @@ func convertResponseItem(payload json.RawMessage, rawLine string, idx int, ts ti
 			Type:      "tool_result",
 			Timestamp: ts,
 			ToolUseID: callID,
-			Raw:       json.RawMessage(rawLine),
+			Message: mustMarshal(MessageContent{
+				Role: "tool",
+				Content: mustMarshal([]ContentBlock{{
+					Type:      "tool_result",
+					ToolUseID: callID,
+					Content:   cloneRawJSON(ri.Output),
+				}}),
+			}),
+			Raw: json.RawMessage(rawLine),
 		}
 
 	case "interaction":
@@ -277,6 +294,40 @@ func convertResponseItem(payload json.RawMessage, rawLine string, idx int, ts ti
 	}
 
 	return nil
+}
+
+func codexErrorText(em codexEventMsg) string {
+	label := strings.TrimSpace(em.CodexErrorInfo)
+	if label == "" {
+		label = strings.TrimSpace(em.Type)
+	}
+	message := strings.TrimSpace(em.Message)
+	switch {
+	case label != "" && message != "":
+		return label + ": " + message
+	case message != "":
+		return message
+	default:
+		return label
+	}
+}
+
+func skipCodexEventMsgType(kind string) bool {
+	switch strings.TrimSpace(kind) {
+	case "token_count",
+		"exec_command_begin",
+		"exec_command_end",
+		"patch_apply_begin",
+		"patch_apply_end",
+		"task_started",
+		"task_complete",
+		"item_started",
+		"item_completed",
+		"context_compacted":
+		return true
+	default:
+		return false
+	}
 }
 
 func codexSessionID(path string) string {
@@ -313,9 +364,10 @@ type codexEntry struct {
 }
 
 type codexEventMsg struct {
-	Type    string `json:"type"`    // user_message, agent_message, agent_reasoning, token_count
-	Message string `json:"message"` // for user_message, agent_message
-	Text    string `json:"text"`    // for agent_reasoning
+	Type           string `json:"type"`             // user_message, agent_message, agent_reasoning, token_count
+	Message        string `json:"message"`          // for user_message, agent_message, error
+	Text           string `json:"text"`             // for agent_reasoning
+	CodexErrorInfo string `json:"codex_error_info"` // for usage_limit_exceeded and related errors
 }
 
 type codexResponseItem struct {
@@ -325,7 +377,8 @@ type codexResponseItem struct {
 	Summary   []codexTextContent `json:"summary,omitempty"`
 	CallID    string             `json:"call_id,omitempty"`
 	Name      string             `json:"name,omitempty"`
-	Output    string             `json:"output,omitempty"`
+	Input     json.RawMessage    `json:"input,omitempty"`
+	Output    json.RawMessage    `json:"output,omitempty"`
 	RequestID string             `json:"request_id,omitempty"`
 	ID        string             `json:"id,omitempty"`
 	Kind      string             `json:"kind,omitempty"`

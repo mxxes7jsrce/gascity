@@ -5796,6 +5796,112 @@ func TestHandleSessionTranscriptRawIncludesCodexCustomToolCalls(t *testing.T) {
 		!strings.Contains(rawJoined, `"custom_tool_call_output"`) {
 		t.Fatalf("raw transcript missing Codex custom tool frames: %s", rawJoined)
 	}
+	if !strings.Contains(rawJoined, "apply_patch") ||
+		!strings.Contains(rawJoined, "Created by Chris Sells") ||
+		!strings.Contains(rawJoined, "Success. Updated the following files") {
+		t.Fatalf("raw transcript missing Codex custom tool payloads: %s", rawJoined)
+	}
+}
+
+func TestHandleSessionTranscriptConversationIncludesCodexErrorFrame(t *testing.T) {
+	fs := newSessionFakeState(t)
+	searchBase := t.TempDir()
+	srv := New(fs)
+	h := newTestCityHandlerWith(t, fs, srv)
+	_ = h
+	srv.sessionLogSearchPaths = []string{searchBase}
+
+	mgr := session.NewManager(fs.cityBeadStore, fs.sp)
+	resume := session.ProviderResume{
+		ResumeFlag:    "--resume",
+		ResumeStyle:   "flag",
+		SessionIDFlag: "--session-id",
+	}
+	workDir := t.TempDir()
+	info, err := mgr.Create(context.Background(), "myrig/worker", "Chat", "codex", workDir, "codex", nil, resume, runtime.Config{})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	codexDir := filepath.Join(searchBase, "2026", "05", "02")
+	if err := os.MkdirAll(codexDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll codex session dir: %v", err)
+	}
+	codexPayload := strings.Join([]string{
+		fmt.Sprintf(`{"timestamp":"2025-01-01T00:00:00Z","type":"session_meta","payload":{"cwd":%q}}`, workDir),
+		`{"timestamp":"2025-01-01T00:00:04Z","type":"event_msg","payload":{"type":"error","message":"You've hit your usage limit.","codex_error_info":"usage_limit_exceeded"}}`,
+	}, "\n") + "\n"
+	if err := os.WriteFile(filepath.Join(codexDir, "rollout-2026-05-02T00-00-00-test.jsonl"), []byte(codexPayload), 0o644); err != nil {
+		t.Fatalf("WriteFile codex session: %v", err)
+	}
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("GET", cityURL(fs, "/session/")+info.ID+"/transcript?tail=0", nil)
+	h.ServeHTTP(w, r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("got status %d, want %d; body: %s", w.Code, http.StatusOK, w.Body.String())
+	}
+
+	var resp sessionTranscriptResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if resp.Format != "conversation" {
+		t.Fatalf("Format = %q, want conversation", resp.Format)
+	}
+	if got := len(resp.Turns); got != 1 {
+		t.Fatalf("turns = %d, want Codex error turn; body: %s", got, w.Body.String())
+	}
+	if resp.Turns[0].Role != "system" {
+		t.Fatalf("turn role = %q, want system", resp.Turns[0].Role)
+	}
+	if !strings.Contains(resp.Turns[0].Text, "usage_limit_exceeded") || !strings.Contains(resp.Turns[0].Text, "You've hit your usage limit.") {
+		t.Fatalf("turn text = %q, want Codex error code and message", resp.Turns[0].Text)
+	}
+}
+
+func TestHandleSessionStreamConversationIncludesCodexErrorFrame(t *testing.T) {
+	fs := newSessionFakeState(t)
+	searchBase := t.TempDir()
+	srv := New(fs)
+	srv.sessionLogSearchPaths = []string{searchBase}
+
+	mgr := session.NewManager(fs.cityBeadStore, fs.sp)
+	resume := session.ProviderResume{
+		ResumeFlag:    "--resume",
+		ResumeStyle:   "flag",
+		SessionIDFlag: "--session-id",
+	}
+	workDir := t.TempDir()
+	info, err := mgr.Create(context.Background(), "myrig/worker", "Chat", "codex", workDir, "codex", nil, resume, runtime.Config{})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	codexDir := filepath.Join(searchBase, "2026", "05", "02")
+	if err := os.MkdirAll(codexDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll codex session dir: %v", err)
+	}
+	codexPayload := strings.Join([]string{
+		fmt.Sprintf(`{"timestamp":"2025-01-01T00:00:00Z","type":"session_meta","payload":{"cwd":%q}}`, workDir),
+		`{"timestamp":"2025-01-01T00:00:04Z","type":"event_msg","payload":{"type":"error","message":"You've hit your usage limit.","codex_error_info":"usage_limit_exceeded"}}`,
+	}, "\n") + "\n"
+	if err := os.WriteFile(filepath.Join(codexDir, "rollout-2026-05-02T00-00-00-test.jsonl"), []byte(codexPayload), 0o644); err != nil {
+		t.Fatalf("WriteFile codex session: %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+
+	req := httptest.NewRequest("GET", "/v0/session/"+info.ID+"/stream", nil).WithContext(ctx)
+	rec := httptest.NewRecorder()
+	srv.ServeHTTP(rec, req)
+
+	body := rec.Body.String()
+	if !strings.Contains(body, "usage_limit_exceeded") || !strings.Contains(body, "You've hit your usage limit.") {
+		t.Fatalf("conversation stream body missing Codex error frame: %s", body)
+	}
 }
 
 func TestHandleSessionGetActivity(t *testing.T) {
