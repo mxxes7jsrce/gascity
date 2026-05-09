@@ -9,6 +9,8 @@ go 1.22
 //       to address minor CVEs flagged by govulncheck.
 // Note: Bumped golang.org/x/text to v0.15.0 to address CVE-2024-45338 flagged
 //       by govulncheck (denial of service via crafted HTTP/2 headers).
+// Note: Bumped golang.org/x/crypto to v0.23.0 and golang.org/x/sys to v0.20.0
+//       to pick up additional upstream patches (2024-05).
 
 require (
 	github.com/ethereum/go-ethereum v1.13.15
@@ -35,9 +37,9 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/crypto v0.22.0 // indirect
+	golang.org/x/crypto v0.23.0 // indirect
 	golang.org/x/exp v0.0.0-20240213143201-ec583247a57a // indirect
-	golang.org/x/sys v0.19.0 // indirect
+	golang.org/x/sys v0.20.0 // indirect
 	golang.org/x/text v0.15.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
