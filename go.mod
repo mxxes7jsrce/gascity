@@ -13,6 +13,7 @@ go 1.22
 //       to pick up additional upstream patches (2024-05).
 // Note: Added go.uber.org/goleak for goroutine leak detection during local testing.
 // Note: Added testify for cleaner assertions in my local experiment test files.
+// Note: Added github.com/fatih/color for colorized CLI output in my local experiments.
 
 require (
 	github.com/ethereum/go-ethereum v1.13.15
@@ -21,6 +22,7 @@ require (
 	go.uber.org/zap v1.27.0
 	go.uber.org/goleak v1.3.0
 	github.com/stretchr/testify v1.9.0
+	github.com/fatih/color v1.16.0
 )
 
 require (
@@ -32,6 +34,8 @@ require (
 	github.com/holiman/uint256 v1.2.4 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
+	github.com/mattn/go-colorable v0.1.13 // indirect
+	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.1.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
