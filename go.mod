@@ -11,12 +11,14 @@ go 1.22
 //       by govulncheck (denial of service via crafted HTTP/2 headers).
 // Note: Bumped golang.org/x/crypto to v0.23.0 and golang.org/x/sys to v0.20.0
 //       to pick up additional upstream patches (2024-05).
+// Note: Added go.uber.org/goleak for goroutine leak detection during local testing.
 
 require (
 	github.com/ethereum/go-ethereum v1.13.15
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.18.2
 	go.uber.org/zap v1.27.0
+	go.uber.org/goleak v1.3.0
 )
 
 require (
