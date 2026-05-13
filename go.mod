@@ -12,6 +12,7 @@ go 1.22
 // Note: Bumped golang.org/x/crypto to v0.23.0 and golang.org/x/sys to v0.20.0
 //       to pick up additional upstream patches (2024-05).
 // Note: Added go.uber.org/goleak for goroutine leak detection during local testing.
+// Note: Added testify for cleaner assertions in my local experiment test files.
 
 require (
 	github.com/ethereum/go-ethereum v1.13.15
@@ -19,10 +20,12 @@ require (
 	github.com/spf13/viper v1.18.2
 	go.uber.org/zap v1.27.0
 	go.uber.org/goleak v1.3.0
+	github.com/stretchr/testify v1.9.0
 )
 
 require (
 	github.com/btcsuite/btcd/btcec/v2 v2.3.2 // indirect
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
@@ -31,6 +34,7 @@ require (
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.1.1 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/sagikazarmark/locafero v0.4.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
